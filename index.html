@@ -77,9 +77,9 @@
     </div>
 
     <div class="nav-bar">
-        <button class="nav-btn active" onclick="switchPanel('principal')">Principal Login</button>
-        <button class="nav-btn" onclick="switchPanel('driver')">Driver Login</button>
-        <button class="nav-btn" onclick="switchPanel('parent')">Parents Login</button>
+        <button class="nav-btn active" id="btn-nav-principal" onclick="switchPanel('principal')">Principal Login</button>
+        <button class="nav-btn" id="btn-nav-driver" onclick="switchPanel('driver')">Driver Login</button>
+        <button class="nav-btn" id="btn-nav-parent" onclick="switchPanel('parent')">Parents Login</button>
     </div>
 
     <div id="panel-principal" class="panel active">
@@ -165,7 +165,7 @@
             <input type="text" id="driver-user" placeholder="Driver Username">
             <div class="password-wrapper">
                 <input type="password" id="driver-pass" placeholder="Password">
-                <span class="toggle-password" onclick="togglePassVisibility('driver-pass', this), 'driver'">SHOW</span>
+                <span class="toggle-password" onclick="togglePassVisibility('driver-pass', this)">SHOW</span>
             </div>
             <button class="action-btn" onclick="loginDriver()">Sign In</button>
         </div>
@@ -241,12 +241,11 @@
         firebase.initializeApp(firebaseConfig);
         var database = firebase.database();
 
-        // Admin account data mapping to Principal setup
         database.ref('users/Guruji1989').set({ password: "Shivam@2109", role: "admin" });
 
         var watchId = null;
-        var loggedInDriverVan = "";
-        var myDriverSessionId = ""; // Current active session token
+        var loggedInDriverVan = localStorage.getItem("driverVanId") || "";
+        var myDriverSessionId = localStorage.getItem("driverSessionId") || ""; 
         var loggedInParentData = null;
         var audioCtx = null;
         var alertInterval = null; 
@@ -266,6 +265,32 @@
             iconUrl: 'https://cdn-icons-png.flaticon.com/512/3418/3418887.png',
             iconSize: [45, 45],
             iconAnchor: [22, 22]
+        });
+
+        // Auto Restore Session for Driver on Refresh
+        window.addEventListener("load", function() {
+            if (loggedInDriverVan && myDriverSessionId) {
+                // Check if this session is still valid in Firebase
+                database.ref('vans/' + loggedInDriverVan).once('value', function(snapshot) {
+                    var vanData = snapshot.val();
+                    if (vanData && vanData.activeSession === myDriverSessionId && vanData.status === "online") {
+                        // Restore driver panel state
+                        switchPanel('driver');
+                        document.getElementById("driver-login-box").classList.add("hidden");
+                        document.getElementById("driver-dashboard").classList.remove("hidden");
+                        document.getElementById("van-id-display").innerText = "Assigned Van ID: " + loggedInDriverVan;
+                        
+                        // Restart background tracking automatically
+                        startTrip(true); 
+                    } else {
+                        // Clear old/expired storage data
+                        localStorage.removeItem("driverVanId");
+                        localStorage.removeItem("driverSessionId");
+                        loggedInDriverVan = "";
+                        myDriverSessionId = "";
+                    }
+                });
+            }
         });
 
         function generateSessionId() {
@@ -296,9 +321,11 @@
 
         function switchPanel(panelName) {
             document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.nav-bar .nav-btn').forEach(b => b.classList.remove('active'));
             document.getElementById('panel-' + panelName).classList.add('active');
-            if(event) event.target.classList.add('active');
+            
+            var activeNavBtn = document.getElementById('btn-nav-' + panelName);
+            if(activeNavBtn) activeNavBtn.classList.add('active');
             
             if (panelName === 'parent' && map) {
                 setTimeout(() => { map.invalidateSize(); }, 300);
@@ -307,7 +334,9 @@
 
         function logout(role) {
             if (role === 'driver') {
-                stopTrip(); // Automatically stops trip and unlocks device
+                stopTrip(); 
+                localStorage.removeItem("driverVanId");
+                localStorage.removeItem("driverSessionId");
             }
             
             if (alertInterval) {
@@ -470,15 +499,17 @@
                 if(d && d.role === "driver" && d.password === p) {
                     var checkVan = d.vanId;
                     
-                    // CHECK LOCK: See if trip is active on another phone
                     database.ref('vans/' + checkVan).once('value', function(vanSnap) {
                         var vanData = vanSnap.val();
                         if (vanData && vanData.status === "online" && vanData.isDriving === true) {
-                            alert("❌ लॉग इन असफल! यह वैन (ID: " + checkVan + ") पहले से किसी अन्य डिवाइस पर लाइव चल रही है। जब तक वह ट्रिप बंद नहीं होगी, नया डिवाइस कनेक्ट नहीं हो सकता।");
+                            alert("❌ लॉग इन असफल! यह वैन (ID: " + checkVan + ") पहले से किसी अन्य डिवाइस पर लाइव चल रही है।");
                         } else {
-                            // Clear entry, safe to login
                             loggedInDriverVan = checkVan;
                             myDriverSessionId = generateSessionId();
+                            
+                            // Save tokens locally so refresh doesn't destroy session
+                            localStorage.setItem("driverVanId", loggedInDriverVan);
+                            localStorage.setItem("driverSessionId", myDriverSessionId);
                             
                             document.getElementById("driver-login-box").classList.add("hidden");
                             document.getElementById("driver-dashboard").classList.remove("hidden");
@@ -490,13 +521,13 @@
             });
         }
 
-        function startTrip() {
+        function startTrip(isAutostart = false) {
             if (!loggedInDriverVan) return;
 
-            // Double check lock status right before starting location tracking
             database.ref('vans/' + loggedInDriverVan).once('value', function(snapshot) {
                 var vanData = snapshot.val();
-                if (vanData && vanData.status === "online" && vanData.isDriving === true && vanData.activeSession !== myDriverSessionId) {
+                // Allow start if it's an auto-restore, or if no one else is driving
+                if (!isAutostart && vanData && vanData.status === "online" && vanData.isDriving === true && vanData.activeSession !== myDriverSessionId) {
                     alert("⚠️ रोक दिया गया! यह वैन किसी दूसरे डिवाइस द्वारा एक्टिवेट कर दी गई है।");
                     logout('driver');
                     return;
@@ -507,12 +538,13 @@
                     b.innerText = "🚨 TRIP STATUS: LIVE SIGNAL BROADCASTING";
                     b.style.background = "#c6f6d5"; b.style.color = "#22543d"; b.style.borderColor = "#38ef7d";
                     
-                    // Mark global lock inside Firebase
                     database.ref('vans/' + loggedInDriverVan).update({
                         status: "online",
                         isDriving: true,
                         activeSession: myDriverSessionId
                     });
+
+                    if(watchId) navigator.geolocation.clearWatch(watchId);
 
                     watchId = navigator.geolocation.watchPosition(function(pos) {
                         var speedKmh = pos.coords.speed && pos.coords.speed > 0 ? Math.round(pos.coords.speed * 3.6) : 0;
@@ -538,7 +570,6 @@
                 watchId = null;
             }
             if (loggedInDriverVan) {
-                // Instantly remove lock on database so other phones can pick up
                 database.ref('vans/' + loggedInDriverVan).update({
                     status: "offline",
                     isDriving: false,

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+  <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -6,6 +6,8 @@
     <title>Guru Ji School - Ultimate Tracker Pro</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
         body { background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px; color: #fff; }
@@ -45,7 +47,7 @@
         .call-btn { padding: 8px 15px; background: #3182ce; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; text-decoration: none; font-size: 14px; }
 
         .map-wrapper { position: relative; margin-top: 15px; }
-        #map-container { width: 100%; height: 450px; border-radius: 16px; overflow: hidden; border: 2px solid #e2e8f0; background: #e2e8f0; z-index: 1; }
+        #map-container { width: 100%; height: 450px; border-radius: 16px; overflow: hidden; border: 2px solid #e2e8f0; z-index: 1; }
         .recenter-btn { position: absolute; top: 10px; right: 10px; background: #00c6ff; color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); font-size: 13px; z-index: 1000; }
 
         .table-container { width: 100%; overflow-x: auto; margin-top: 10px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-radius: 12px; }
@@ -57,77 +59,12 @@
         .hidden { display: none !important; }
     </style>
     
-    <!-- All third-party assets below use a multi-CDN fallback loader, because some
-         networks/browser extensions block specific CDN domains (e.g. gstatic.com)
-         while others (jsdelivr, unpkg, cdnjs) still work fine. -->
-    <script>
-        function loadScriptOnce(url) {
-            return new Promise(function(resolve, reject) {
-                var s = document.createElement('script');
-                s.src = url;
-                s.onload = function() { resolve(url); };
-                s.onerror = function() { reject(url); };
-                document.head.appendChild(s);
-            });
-        }
-        function loadStylesheetOnce(url) {
-            return new Promise(function(resolve, reject) {
-                var l = document.createElement('link');
-                l.rel = 'stylesheet';
-                l.href = url;
-                l.onload = function() { resolve(url); };
-                l.onerror = function() { reject(url); };
-                document.head.appendChild(l);
-            });
-        }
-        function loadFirstWorking(urls, loaderFn) {
-            var i = 0;
-            function tryNext() {
-                if (i >= urls.length) return Promise.reject("All CDN sources failed: " + urls.join(", "));
-                var url = urls[i++];
-                return loaderFn(url).catch(tryNext);
-            }
-            return tryNext();
-        }
-
-        // Sequential: firebase-database.js depends on firebase-app.js already being loaded.
-        window.firebaseSdkReady = loadFirstWorking([
-            "https://cdn.jsdelivr.net/npm/firebase@8.10.1/firebase-app.js",
-            "https://unpkg.com/firebase@8.10.1/firebase-app.js",
-            "https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"
-        ], loadScriptOnce).then(function() {
-            return loadFirstWorking([
-                "https://cdn.jsdelivr.net/npm/firebase@8.10.1/firebase-database.js",
-                "https://unpkg.com/firebase@8.10.1/firebase-database.js",
-                "https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"
-            ], loadScriptOnce);
-        });
-
-        // Leaflet CSS + JS — no SRI hash pinned here on purpose: a hardcoded integrity hash
-        // that doesn't exactly match the byte-for-byte file served by a given mirror causes
-        // the browser to silently block the script (which looks like "L is not defined").
-        window.leafletReady = loadFirstWorking([
-            "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css",
-            "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css",
-            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
-        ], loadStylesheetOnce).catch(function() { /* map will still work without pretty tiles CSS edge cases; don't block on this */ })
-        .then(function() {
-            return loadFirstWorking([
-                "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js",
-                "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js",
-                "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"
-            ], loadScriptOnce);
-        });
-    </script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 </head>
 <body>
-
-    <div id="sdk-loading-overlay" style="position:fixed; inset:0; background:#0f2027; color:#fff; display:flex; align-items:center; justify-content:center; z-index:9999; text-align:center; padding:20px;">
-        <div>
-            <div style="font-size:20px; font-weight:600;">🔌 Connecting to services…</div>
-            <div id="sdk-loading-detail" style="margin-top:10px; font-size:14px; color:#a0aec0;">Loading Firebase SDK</div>
-        </div>
-    </div>
 
     <div class="school-header">
         <h1>Guru Ji Uchchhatar Madhyamik Vidyalaya</h1>
@@ -257,7 +194,7 @@
                     <h4 id="stat-speed">0 km/h</h4>
                 </div>
                 <div class="stat-card">
-                    <p>⏱️ Est. Timing (ETA)</p>
+                    <p>⏱️ ETA (Straight-Line)</p>
                     <h4 id="stat-eta">-- mins</h4>
                 </div>
                 <div class="stat-card">
@@ -286,63 +223,45 @@
             messagingSenderId: "479660938317",
             appId: "1:479660938317:web:e2d194a03ac15dae16b804"
         };
+        firebase.initializeApp(firebaseConfig);
+        var database = firebase.database();
 
-        var database; // populated once the Firebase SDK finishes loading (see window.firebaseSdkReady)
+        database.ref('users/master_admin').set({ password: "adminpass786", role: "admin" });
 
         var watchId = null;
         var loggedInDriverVan = "";
         var loggedInParentData = null;
         var audioCtx = null;
-
-        // Driver-side: used to compute real speed from GPS deltas when device speed is unavailable
-        var lastDriverPos = null; // { lat, lng, time }
-
-        // Leaflet (OpenStreetMap) Global Variables — replaces Google Maps
-        var leafletMap = null;
+        var alertInterval = null; 
+        
+        // Leaflet Setup
+        var map = null;
         var vanMarker = null;
         var homeMarker = null;
-        var routeLine = null;
         var currentVanLat = null, currentVanLng = null;
 
-        // Custom icons — created only after Leaflet (the `L` global) is confirmed loaded, below.
-        var homeIcon = null;
-        var busIcon = null;
-
-        Promise.all([window.firebaseSdkReady, window.leafletReady]).then(function() {
-            firebase.initializeApp(firebaseConfig);
-            database = firebase.database();
-            database.ref('users/master_admin').set({ password: "adminpass786", role: "admin" });
-
-            homeIcon = L.icon({ iconUrl: "https://cdn-icons-png.flaticon.com/512/619/619153.png", iconSize: [40, 40], iconAnchor: [20, 40] });
-            busIcon = L.icon({ iconUrl: "https://cdn-icons-png.flaticon.com/512/3418/3418887.png", iconSize: [45, 45], iconAnchor: [22, 22] });
-
-            var overlay = document.getElementById("sdk-loading-overlay");
-            if (overlay) overlay.remove();
-        }).catch(function(err) {
-            console.error(err);
-            var overlay = document.getElementById("sdk-loading-overlay");
-            if (overlay) {
-                overlay.innerHTML = '<div style="max-width:500px;">' +
-                    '<div style="font-size:20px; font-weight:600; color:#feb2b2;">⚠️ Could not load required resources</div>' +
-                    '<div style="margin-top:12px; font-size:14px; color:#e2e8f0; line-height:1.5;">' +
-                    'One or more required libraries (Firebase or the map library) failed to load from every CDN source tried. ' +
-                    'This usually means your network, firewall, or a browser extension (ad-blocker / privacy shield) is blocking script downloads. ' +
-                    'Try disabling ad-blockers for this page, switching networks, or checking your internet connection, then reload.' +
-                    '</div></div>';
-            }
+        var homeIcon = L.icon({
+            iconUrl: 'https://cdn-icons-png.flaticon.com/512/619/619153.png',
+            iconSize: [40, 40],
+            iconAnchor: [20, 40]
         });
 
-        // Haversine distance in km between two lat/lng points
-        function haversineKm(lat1, lon1, lat2, lon2) {
-            function toRad(v) { return v * Math.PI / 180; }
-            var R = 6371;
-            var dLat = toRad(lat2 - lat1);
-            var dLon = toRad(lon2 - lon1);
-            var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-                    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return R * c;
+        var vanIcon = L.icon({
+            iconUrl: 'https://cdn-icons-png.flaticon.com/512/3418/3418887.png',
+            iconSize: [45, 45],
+            iconAnchor: [22, 22]
+        });
+
+        // Haversine Formula (दूरी निकालने के लिए गणितीय समीकरण - पहले गायब था!)
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            var R = 6371; // Earth Radius (km)
+            var dLat = (lat2 - lat1) * Math.PI / 180;
+            var dLon = (lon2 - lon1) * Math.PI / 180;
+            var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c; 
         }
 
         function switchPanel(panelName) {
@@ -350,16 +269,27 @@
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             document.getElementById('panel-' + panelName).classList.add('active');
             if(event) event.target.classList.add('active');
+            
+            if (panelName === 'parent' && map) {
+                setTimeout(() => { map.invalidateSize(); }, 300);
+            }
         }
 
         function logout(role) {
             if (role === 'driver' && watchId) stopTrip();
+            
+            if (alertInterval) {
+                clearInterval(alertInterval);
+                alertInterval = null;
+            }
+
             document.getElementById(role + "-dashboard").classList.add("hidden");
             document.getElementById(role + "-login-box").classList.remove("hidden");
+            
             if(role === 'parent') {
                 database.ref('vans/' + loggedInParentData.vanId).off();
-                if (leafletMap) { leafletMap.remove(); } // fully tear down the Leaflet instance so re-login can recreate it cleanly
-                leafletMap = null; vanMarker = null; homeMarker = null; routeLine = null;
+                if(map) { map.remove(); map = null; }
+                vanMarker = null; homeMarker = null;
             }
             alert("सफलतापूर्वक लॉगआउट हो गए!");
         }
@@ -385,10 +315,6 @@
                     document.getElementById("admin-dashboard").classList.remove("hidden");
                     loadAdminDataLists();
                 } else { alert("Wrong Admin Credentials"); }
-            },
-            function(err) {
-                console.error(err);
-                alert("❌ Login फ़ेल: " + err.message + "\n\nसंभावित वजह: Firebase Database Rules इस path को पढ़ने (read) से रोक रहे हैं।");
             });
         }
 
@@ -398,23 +324,14 @@
             var r = document.getElementById("u-role").value;
             var v = document.getElementById("u-vanId").value.trim();
             var ph = document.getElementById("u-phone").value;
-
-            if(!u || !p || !v) return alert("कृपया सभी फ़ील्ड्स भरें!");
-
-            // Firebase Realtime Database paths cannot contain these characters — a silent-fail
-            // cause if a username or Van ID happens to include one of them.
-            var invalidCharsPattern = /[.#$\[\]\/]/;
-            if (invalidCharsPattern.test(u)) return alert("❌ Username में ये characters allowed नहीं हैं: . # $ [ ] /\nकृपया सिर्फ letters, numbers, अंडरस्कोर (_) इस्तेमाल करें।");
-            if (invalidCharsPattern.test(v)) return alert("❌ Van ID में ये characters allowed नहीं हैं: . # $ [ ] /\nकृपया सिर्फ letters, numbers, अंडरस्कोर (_) इस्तेमाल करें।");
+            
+            if(!u || !p || !v) return alert("कृपया सभी फ़ील्ड्स भरें!");
 
             var userData = { password: p, role: r, vanId: v };
-
+            
             if(r === 'driver') {
                 userData.phone = ph || "Not Added";
-                database.ref('vans/' + v + '/driverPhone').set(userData.phone).catch(function(err) {
-                    console.error("Failed to write driverPhone:", err);
-                    alert("⚠️ वैन में ड्राइवर फ़ोन सेव नहीं हुआ: " + err.message);
-                });
+                database.ref('vans/' + v + '/driverPhone').set(userData.phone);
             } else if(r === 'parent') {
                 var lat = parseFloat(document.getElementById("u-lat").value);
                 var lng = parseFloat(document.getElementById("u-lng").value);
@@ -423,15 +340,10 @@
                 userData.stopLng = lng;
             }
 
-            database.ref('users/' + u).set(userData)
-                .then(function() {
-                    alert("सफलतापूर्वक सुरक्षित किया गया!");
-                    resetAdminForm();
-                })
-                .catch(function(err) {
-                    console.error("Failed to save user:", err);
-                    alert("❌ सेव नहीं हुआ! कारण: " + err.message + "\n\nसंभावित वजह: Firebase Realtime Database की 'Rules' write को ब्लॉक कर रही हैं। Firebase Console में जाकर Rules चेक करें।");
-                });
+            database.ref('users/' + u).set(userData, function() {
+                alert("सफलतापूर्वक सुरक्षित किया गया!");
+                resetAdminForm();
+            });
         }
 
         function loadAdminDataLists() {
@@ -468,10 +380,6 @@
                         </tr>`;
                     }
                 });
-            },
-            function(err) {
-                console.error(err);
-                alert("❌ यूज़र लिस्ट लोड नहीं हो पाई: " + err.message + "\n\nसंभावित वजह: Firebase Database Rules '/users' path को पढ़ने (read) से रोक रहे हैं। Firebase Console में जाकर Rules जांचें।");
             });
         }
 
@@ -504,7 +412,7 @@
             document.getElementById("cancel-btn").style.display = "none";
         }
 
-        // DRIVER TRIP ENGINE
+        // DRIVER CODE
         function loginDriver() {
             var u = document.getElementById("driver-user").value;
             var p = document.getElementById("driver-pass").value;
@@ -517,72 +425,31 @@
                     document.getElementById("van-id-display").innerText = "Assigned Van ID: " + loggedInDriverVan;
                     database.ref('vans/' + loggedInDriverVan + '/driverPhone').set(d.phone || "Not Added");
                 } else { alert("Wrong Driver Credentials"); }
-            },
-            function(err) {
-                console.error(err);
-                alert("❌ Login फ़ेल: " + err.message + "\n\nसंभावित वजह: Firebase Database Rules इस path को पढ़ने (read) से रोक रहे हैं।");
             });
         }
 
         function startTrip() {
-            var b = document.getElementById("driver-status");
-
-            if (!navigator.geolocation) {
-                b.innerText = "❌ यह ब्राउज़र लोकेशन सपोर्ट नहीं करता (Geolocation not supported)";
-                b.style.background = "#fed7d7"; b.style.color = "#9b2c2c"; b.style.borderColor = "#ff4b2b";
-                return;
-            }
-
-            b.innerText = "📡 लोकेशन परमिशन माँगी जा रही है...";
-            lastDriverPos = null;
-
-            watchId = navigator.geolocation.watchPosition(function(pos) {
-                var lat = pos.coords.latitude;
-                var lng = pos.coords.longitude;
-                var speedKmh;
-
-                if (pos.coords.speed !== null && pos.coords.speed !== undefined && pos.coords.speed >= 0) {
-                    // Real speed reported by the device GPS
-                    speedKmh = Math.round(pos.coords.speed * 3.6);
-                } else if (lastDriverPos) {
-                    // Fallback: derive speed from distance/time between the last two GPS fixes
-                    var distKm = haversineKm(lastDriverPos.lat, lastDriverPos.lng, lat, lng);
-                    var hours = (Date.now() - lastDriverPos.time) / 3600000;
-                    speedKmh = hours > 0 ? Math.round(distKm / hours) : 0;
-                } else {
-                    speedKmh = 0;
-                }
-                lastDriverPos = { lat: lat, lng: lng, time: Date.now() };
-
-                database.ref('vans/' + loggedInDriverVan).update({
-                    latitude: lat,
-                    longitude: lng,
-                    speed: speedKmh,
-                    status: "online",
-                    lastUpdate: firebase.database.ServerValue.TIMESTAMP
-                });
-
+            if (navigator.geolocation) {
+                var b = document.getElementById("driver-status");
                 b.innerText = "🚨 TRIP STATUS: LIVE SIGNAL BROADCASTING";
                 b.style.background = "#c6f6d5"; b.style.color = "#22543d"; b.style.borderColor = "#38ef7d";
-            }, function(err) {
-                // Geolocation permission denied or unavailable — surface this clearly to the driver
-                var msg = "❌ लोकेशन एरर: ";
-                if (err.code === err.PERMISSION_DENIED) msg += "परमिशन डिनाई हुई। ब्राउज़र सेटिंग्स में लोकेशन एक्सेस दें।";
-                else if (err.code === err.POSITION_UNAVAILABLE) msg += "लोकेशन उपलब्ध नहीं है।";
-                else if (err.code === err.TIMEOUT) msg += "रिक्वेस्ट टाइमआउट हो गई।";
-                else msg += err.message;
+                
+                watchId = navigator.geolocation.watchPosition(function(pos) {
+                    var speedKmh = pos.coords.speed && pos.coords.speed > 0 ? Math.round(pos.coords.speed * 3.6) : 0;
 
-                b.innerText = msg;
-                b.style.background = "#fed7d7"; b.style.color = "#9b2c2c"; b.style.borderColor = "#ff4b2b";
-                database.ref('vans/' + loggedInDriverVan + '/status').set("offline");
-            }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
+                    database.ref('vans/' + loggedInDriverVan).update({
+                        latitude: pos.coords.latitude,
+                        longitude: pos.coords.longitude,
+                        speed: speedKmh,
+                        status: "online"
+                    });
+                }, null, { enableHighAccuracy: true });
+            }
         }
 
         function stopTrip() {
             if (watchId) {
                 navigator.geolocation.clearWatch(watchId);
-                watchId = null;
-                lastDriverPos = null;
                 database.ref('vans/' + loggedInDriverVan + '/status').set("offline");
                 var b = document.getElementById("driver-status");
                 b.innerText = "Trip Status: STOPPED";
@@ -590,11 +457,28 @@
             }
         }
 
-        // PARENT PORTAL ENGINE WITH LEAFLET + OPENSTREETMAP (FREE, NO API KEY)
+        // PARENT MODULE & BEEP AUDIO
         function playAlertSound() {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            var osc = audioCtx.createOscillator(); osc.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                
+                var osc = audioCtx.createOscillator(); 
+                var gainNode = audioCtx.createGain();
+                
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
+                
+                osc.start(); 
+                osc.stop(audioCtx.currentTime + 0.3); 
+            } catch(e) {
+                console.log("Audio play blocked by browser:", e);
+            }
         }
 
         function loginParent() {
@@ -607,42 +491,28 @@
                     document.getElementById("parent-login-box").classList.add("hidden");
                     document.getElementById("parent-dashboard").classList.remove("hidden");
                     
-                    // Initializing the Leaflet + OpenStreetMap map (free, no API key)
                     setTimeout(function() {
-                        if (typeof L === "undefined") {
-                            alert("❌ Map library (Leaflet) load नहीं हो पाई। कृपया पेज को हार्ड-रिफ्रेश करें (Ctrl+Shift+R) या internet connection चेक करें।");
-                            return;
-                        }
                         var homeLat = loggedInParentData.stopLat;
                         var homeLng = loggedInParentData.stopLng;
 
-                        leafletMap = L.map('map-container').setView([homeLat, homeLng], 15);
+                        map = L.map('map-container').setView([homeLat, homeLng], 15);
 
                         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                            maxZoom: 19,
-                            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                        }).addTo(leafletMap);
+                            attribution: '© OpenStreetMap contributors'
+                        }).addTo(map);
 
-                        // Home / stop marker
-                        homeMarker = L.marker([homeLat, homeLng], { icon: homeIcon }).addTo(leafletMap).bindPopup("Child Home Stop");
-
-                        // Route line placeholder (drawn once the van's position is known)
-                        routeLine = L.polyline([], { color: "#ff7e5f", weight: 6, opacity: 0.8 }).addTo(leafletMap);
-
-                        // Leaflet needs a resize nudge since the container was hidden (display:none) at creation
-                        setTimeout(function() { leafletMap.invalidateSize(); }, 200);
+                        homeMarker = L.marker([homeLat, homeLng], {icon: homeIcon})
+                            .addTo(map)
+                            .bindPopup("Child's Home Stop Location")
+                            .openPopup();
 
                         startTrackingForParent();
-                    }, 300);
+                    }, 500);
 
                 } else { alert("Wrong Parent Credentials"); }
-            },
-            function(err) {
-                console.error(err);
-                alert("❌ Login फ़ेल: " + err.message + "\n\nसंभावित वजह: Firebase Database Rules इस path को पढ़ने (read) से रोक रहे हैं।");
             });
         }
-        
+
         function startTrackingForParent() {
             var pStatus = document.getElementById("parent-status");
             document.getElementById("parent-van-display").innerText = "🚌 Assigned Van: " + loggedInParentData.vanId;
@@ -658,58 +528,44 @@
                     if(van.status === "online") {
                         currentVanLat = van.latitude;
                         currentVanLng = van.longitude;
-                        var vanPos = [currentVanLat, currentVanLng];
-                        var homePos = [loggedInParentData.stopLat, loggedInParentData.stopLng];
+                        var homeLat = loggedInParentData.stopLat;
+                        var homeLng = loggedInParentData.stopLng;
                         
                         document.getElementById("stat-speed").innerText = (van.speed || 0) + " km/h";
 
-                        // Live Van Moving Icon (Bus Pin) — Leaflet marker
                         if(!vanMarker) {
-                            vanMarker = L.marker(vanPos, { icon: busIcon }).addTo(leafletMap).bindPopup("School Van");
+                            vanMarker = L.marker([currentVanLat, currentVanLng], {icon: vanIcon})
+                                .addTo(map)
+                                .bindPopup("School Van Tracker Active");
                         } else {
-                            vanMarker.setLatLng(vanPos);
+                            vanMarker.setLatLng([currentVanLat, currentVanLng]);
                         }
 
-                        // Straight-line distance (Haversine) — always available, zero cost, no external API
-                        var distanceKm = haversineKm(vanPos[0], vanPos[1], homePos[0], homePos[1]);
-                        var distanceMeters = distanceKm * 1000;
-
-                        // Draw a straight reference line between van and home
-                        routeLine.setLatLngs([vanPos, homePos]);
-
-                        // ETA: use live reported speed if moving, otherwise assume a conservative 20 km/h average
-                        var speedForEta = (van.speed && van.speed > 3) ? van.speed : 20;
-                        var etaMinutes = Math.max(1, Math.round((distanceKm / speedForEta) * 60));
+                        // दूरी की गणना
+                        var distanceKm = calculateDistance(currentVanLat, currentVanLng, homeLat, homeLng);
+                        var speed = van.speed > 5 ? van.speed : 25; 
+                        var etaMinutes = Math.round((distanceKm / speed) * 60);
 
                         document.getElementById("stat-distance").innerText = distanceKm.toFixed(2) + " km";
-                        document.getElementById("stat-eta").innerText = "~" + etaMinutes + " mins";
+                        document.getElementById("stat-eta").innerText = etaMinutes + " mins";
 
-                        // Try to fetch a real road route from the free public OSRM demo server.
-                        // This is best-effort only: OSRM's public demo has rate limits and isn't guaranteed
-                        // uptime, so failures silently keep the straight-line fallback above.
-                        fetch("https://router.project-osrm.org/route/v1/driving/" +
-                            vanPos[1] + "," + vanPos[0] + ";" + homePos[1] + "," + homePos[0] +
-                            "?overview=full&geometries=geojson")
-                            .then(function(r) { return r.json(); })
-                            .then(function(data) {
-                                if (data.code === "Ok" && data.routes && data.routes[0]) {
-                                    var coords = data.routes[0].geometry.coordinates.map(function(c) { return [c[1], c[0]]; });
-                                    routeLine.setLatLngs(coords);
-                                    var roadKm = data.routes[0].distance / 1000;
-                                    var roadMin = Math.round(data.routes[0].duration / 60);
-                                    document.getElementById("stat-distance").innerText = roadKm.toFixed(2) + " km";
-                                    document.getElementById("stat-eta").innerText = "~" + Math.max(1, roadMin) + " mins";
-                                }
-                            })
-                            .catch(function() { /* keep the straight-line fallback already shown */ });
-
-                        if(distanceMeters <= 1000) {
-                            pStatus.innerText = "⚠️ अलार्म: वैन आपके बहुत करीब आ चुकी है! (" + Math.round(distanceMeters) + " मीटर दूर)";
+                        // अलार्म लॉजिक (1000 मीटर के दायरे में)
+                        if((distanceKm * 1000) <= 1000) {
+                            pStatus.innerText = "⚠️ अलार्म: वैन आपके बहुत करीब आ चुकी है! (" + Math.round(distanceKm * 1000) + " मीटर दूर)";
                             pStatus.style.background = "#fed7d7"; pStatus.style.color = "#9b2c2c"; pStatus.style.borderColor = "#ff4b2b";
-                            playAlertSound();
+                            
+                            if (!alertInterval) {
+                                playAlertSound(); 
+                                alertInterval = setInterval(playAlertSound, 3000); 
+                            }
                         } else {
                             pStatus.innerText = "🚌 वैन एक्टिव है और आपके घर आ रही है।";
                             pStatus.style.background = "#c6f6d5"; pStatus.style.color = "#22543d"; pStatus.style.borderColor = "#38ef7d";
+                            
+                            if (alertInterval) {
+                                clearInterval(alertInterval);
+                                alertInterval = null;
+                            }
                         }
 
                     } else {
@@ -718,25 +574,23 @@
                         document.getElementById("stat-speed").innerText = "0 km/h";
                         document.getElementById("stat-eta").innerText = "-- mins";
                         document.getElementById("stat-distance").innerText = "-- km";
-                        if(vanMarker) { leafletMap.removeLayer(vanMarker); vanMarker = null; }
-                        if(routeLine) routeLine.setLatLngs([]);
+                        if(vanMarker) { map.removeLayer(vanMarker); vanMarker = null; }
+                        
+                        if (alertInterval) {
+                            clearInterval(alertInterval);
+                            alertInterval = null;
+                        }
                     }
                 }
-            },
-            function(err) {
-                console.error(err);
-                alert("❌ वैन ट्रैकिंग डेटा नहीं मिला: " + err.message + "\n\nसंभावित वजह: Firebase Database Rules '/vans' path को पढ़ने (read) से रोक रहे हैं।");
             });
         }
 
         function recenterParentMap() {
-            if(leafletMap && homeMarker) {
-                if (vanMarker) {
-                    leafletMap.fitBounds(L.latLngBounds([homeMarker.getLatLng(), vanMarker.getLatLng()]), { padding: [40, 40] });
-                } else {
-                    leafletMap.setView(homeMarker.getLatLng(), 15);
-                }
+            if(map && currentVanLat && currentVanLng) {
+                var group = new L.featureGroup([homeMarker, vanMarker].filter(Boolean));
+                map.fitBounds(group.getBounds().pad(0.1));
             }
         }
     </script>
+</body>
 </html>
